@@ -1,0 +1,270 @@
+<!doctype html><html lang="pt-BR"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Gestão de Obras</title>
+<style>
+:root{--az:#0B2A4A;--b:#1769C2;--bl:#E6F0FB;--bg:#F4F7FB;--cd:#fff;--tx:#14233A;--ts:#5B6B80;--bd:#D5DEEA;--ok:#1E8E5A;--wa:#C98A00;--er:#C23B3B;color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--az:#0A1C33;--b:#5AA2F0;--bl:#1B3556;--bg:#0E1726;--cd:#16233A;--tx:#E6EEF8;--ts:#9FB0C6;--bd:#2A3B55;color-scheme:dark}}
+:root[data-theme="dark"]{--az:#0A1C33;--b:#5AA2F0;--bl:#1B3556;--bg:#0E1726;--cd:#16233A;--tx:#E6EEF8;--ts:#9FB0C6;--bd:#2A3B55;color-scheme:dark}
+*{box-sizing:border-box}html,body{margin:0}body{background:var(--bg);color:var(--tx);font:16px system-ui,-apple-system,Segoe UI,Roboto,sans-serif;padding-bottom:84px}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);background:var(--az);z-index:10}
+header{position:sticky;top:env(safe-area-inset-top,0px);background:var(--az);color:#fff;padding:14px 16px;font-weight:700;font-size:18px;z-index:9}
+main{padding:14px;max-width:760px;margin:auto}
+nav{position:fixed;left:0;right:0;bottom:0;display:flex;background:var(--cd);border-top:1px solid var(--bd);padding-bottom:env(safe-area-inset-bottom,0px);z-index:9}
+nav button{flex:1;border:0;background:none;color:var(--ts);padding:9px 2px;font-size:11px}nav button b{display:block;font-size:20px}nav .on{color:var(--b);font-weight:700}
+.cd{background:var(--cd);border:1px solid var(--bd);border-radius:12px;padding:12px;margin-bottom:10px}.cd small{color:var(--ts);display:block}.cd b{font-size:19px;color:var(--b)}
+.g{display:grid;grid-template-columns:1fr 1fr;gap:10px}.g .cd{margin:0}
+.bt{min-height:50px;border:0;border-radius:12px;background:var(--b);color:#fff;font-weight:700;font-size:16px;padding:0 16px;width:100%;margin-bottom:8px}.bt.s{background:none;color:var(--b);border:1.5px solid var(--b)}.bt.r{background:var(--er)}.bt.m{min-height:38px;width:auto;font-size:14px;margin:4px 6px 0 0}
+.chip{display:inline-block;padding:8px 14px;border-radius:20px;background:var(--bl);color:var(--tx);margin:0 6px 8px 0;border:0;font-size:14px}.chip.on{background:var(--b);color:#fff}
+.bd{display:inline-block;padding:2px 10px;border-radius:20px;font-size:12px;font-weight:700;border:1px solid currentColor}
+input,select,textarea{width:100%;padding:12px;border:1px solid var(--bd);border-radius:10px;background:var(--cd);color:var(--tx);font-size:16px;margin:3px 0 11px}
+label{font-size:13px;color:var(--ts)}.er{color:var(--er)}.mu{color:var(--ts);font-size:14px}
+.ov{position:fixed;inset:0;background:#0009;z-index:20;overflow:auto;padding:14px}.md{background:var(--bg);border-radius:14px;padding:16px;max-width:560px;margin:auto}
+table{width:100%;border-collapse:collapse;font-size:13px}td,th{padding:6px 4px;border-bottom:1px solid var(--bd);text-align:left}
+h3{margin:4px 0 10px}.rw{display:flex;justify-content:space-between;gap:8px;padding:4px 0}
+</style></head><body>
+<header id="ttl">Gestão de Obras</header><main id="app"></main>
+<nav id="nv"></nav>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+const K='gestao_obras_v1',ECATS=['Capacetes','Óculos','Luvas','Botinas','Protetores auriculares','Respiradores','Cintos de segurança','Outros'];let S={};try{S=JSON.parse(localStorage.getItem(K))||{}}catch(e){}
+S=Object.assign({epis:[],eqp:[],eh:[],ecats:ECATS,obras:[],forn:[],oc:[],nf:[],par:[],mat:[],mov:[],hist:[],cats:['Material civil','Material elétrico','Material hidráulico','Material de pintura','Ferramentas','Outros'],uns:['UN','KG','G','M','M²','M³','L','ML','CX','PCT','SC','ROLO','PAR','JOGO'],seq:1},S);
+function save(){try{localStorage.setItem(K,JSON.stringify(S))}catch(e){alert('Não foi possível salvar neste navegador. Faça o backup agora (Mais > Backup).')}}
+const $=s=>document.querySelector(s),uid=()=>S.seq++;
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const brl=c=>(c/100).toLocaleString('pt-BR',{style:'currency',currency:'BRL'}),num=n=>Number(n).toLocaleString('pt-BR',{maximumFractionDigits:3});
+const cs=c=>(c/100).toFixed(2).replace('.',',');
+const pm=t=>{t=String(t).replace(/[R$\s.]/g,'').replace(',','.');return /^\d+(\.\d{1,2})?$/.test(t)?Math.round(parseFloat(t)*100):null};
+const pq=t=>{t=String(t).trim().replace(/\./g,'').replace(',','.');const n=Number(t);return t!==''&&isFinite(n)?n:null};
+const brd=i=>i?i.split('-').reverse().join('/'):'';
+const today=()=>{const d=new Date();return new Date(d-d.getTimezoneOffset()*6e4).toISOString().slice(0,10)};
+const addD=(i,n)=>{const d=new Date(i+'T12:00:00');d.setDate(d.getDate()+n);return d.toISOString().slice(0,10)};
+const by=(a,id)=>S[a].find(x=>x.id==id),nm=(a,id)=>{const x=by(a,id);return x?(x.nome||x.fantasia||x.razao||x.descricao):''};
+const hist=(a,t,ref)=>{S.hist.push({ts:new Date().toLocaleString('pt-BR'),a,t,ref})};
+function cnpjOk(c){c=c.replace(/\D/g,'');if(c.length!=14||/^(\d)\1+$/.test(c))return false;const f=l=>{let s=0,p=l-7;for(let i=0;i<l;i++){s+=+c[i]*p--;if(p<2)p=9}const r=s%11;return r<2?0:11-r};return f(12)==c[12]&&f(13)==c[13]}
+// cálculos
+const nfsV=o=>S.nf.filter(n=>n.oc==o.id&&n.st=='Válida'),pars=n=>S.par.filter(p=>p.nf==n.id);
+const fat=o=>nfsV(o).reduce((a,n)=>a+n.v,0),pago=o=>nfsV(o).flatMap(pars).filter(p=>p.pg).reduce((a,p)=>a+p.v,0);
+const ocSt=o=>o.cancel?'Cancelada':fat(o)==0?'Aberta':fat(o)<o.v?'Parcialmente faturada':'Faturada';
+const pSt=p=>p.pg?'Pago':p.venc<today()?'Vencido':p.venc==today()?'Vence hoje':'A vencer';
+const cor=s=>({Pago:'--ok',Vencido:'--er','Vence hoje':'--wa','A vencer':'--b',Faturada:'--ok',Cancelada:'--er',Aberta:'--b','Parcialmente faturada':'--wa'}[s]||'--b');
+const stk=m=>m.saldo<=0?['Zerado','--er']:m.saldo<m.min?['Abaixo do mínimo','--er']:m.saldo<=m.min*1.2?['Próximo do mínimo','--wa']:['Normal','--ok'];
+const B=(t,c)=>`<span class=bd style="color:var(${c||cor(t)})">${esc(t)}</span>`;
+// formulários
+const opt=(l,f,blank)=>(blank?[['','—']]:[]).concat(l.map(x=>[x.id,f(x)]));
+function form(title,fs,init,ok){init=init||{};const d=document.createElement('div');d.className='ov';
+d.innerHTML=`<div class=md><h3>${title}</h3>${fs.map(([k,l,t,o,r])=>{let v=init[k]??'',i;
+if(t=='s')i=`<select name=${k}>${(o||[]).map(x=>{x=Array.isArray(x)?x:[x,x];return`<option value="${esc(x[0])}" ${x[0]==v?'selected':''}>${esc(x[1])}</option>`}).join('')}</select>`;
+else if(t=='V')i=`<div data-v="${k}"></div>`;else if(t=='a')i=`<textarea name=${k} rows=2>${esc(v)}</textarea>`;
+else{if(t=='m'&&typeof v=='number')v=cs(v);i=`<input name=${k} type="${t=='d'?'date':'text'}" ${t=='m'||t=='n'?'inputmode=decimal':''} value="${esc(v)}">`}
+return`<label>${l}${r?' *':''}</label>${i}`}).join('')}<p class=er id=fe></p><button class=bt id=fs>Salvar</button><button class="bt s" id=fc>Cancelar</button></div>`;
+document.body.appendChild(d);d.querySelector('#fc').onclick=()=>d.remove();
+fs.filter(f=>f[2]=='V').forEach(([k,l,t,o])=>{const box=d.querySelector(`[data-v="${k}"]`),src=d.querySelector(`[name=${o}]`),tot=d.querySelector('[name=v]'),pd=init[k]||[],pv=init[k+'_v']||[];let manual=pv.length>0,cnt=pd.length;
+const total=()=>pm(tot?tot.value:'')||0;
+const upd=()=>{const sm=[...box.querySelectorAll('[data-p]')].reduce((a,i)=>a+(pm(i.value)||0),0),T=total(),df=T-sm,el=box.querySelector('.sm');if(el){el.textContent=`Soma das parcelas: ${brl(sm)} · Valor da NF: ${brl(T)} · Diferença: ${brl(df)}`;el.style.color=df==0?'var(--ok)':'var(--er)'}};
+const draw=()=>{const od=[...box.querySelectorAll('[data-d]')].map(i=>i.value),ov=[...box.querySelectorAll('[data-p]')].map(i=>i.value),n=Math.max(0,Math.min(60,parseInt(src.value)||0));
+if(n!=cnt)manual=false;cnt=n;const T=total(),base=n?Math.floor(T/n):0;let prev='',h='';
+for(let i=0;i<n;i++){let dt=od[i]??pd[i]??'';if(!dt)dt=prev?addD(prev,30):addD(today(),30);prev=dt;
+const vl=manual?(ov[i]??(pv[i]!=null?cs(pv[i]):'')):cs(i==0?T-base*(n-1):base);
+h+=`<label>Parcela ${i+1} de ${n}: vencimento e valor (R$) *</label><div style="display:flex;gap:8px"><input type=date data-d value="${dt}"><input data-p inputmode=decimal value="${vl}"></div>`}
+box.innerHTML=h+'<p class=sm style="font-size:13px"></p>';box.querySelectorAll('[data-p]').forEach(i=>i.oninput=()=>{manual=true;upd()});upd()};
+draw();src.oninput=draw;src.onchange=draw;if(tot){tot.oninput=draw;tot.onchange=draw}});
+d.querySelector('#fs').onclick=()=>{const v={};for(const[k,l,t,o,r]of fs){if(t=='V'){v[k]=[...d.querySelectorAll(`[data-v="${k}"] [data-d]`)].map(i=>i.value);v[k+'_v']=[...d.querySelectorAll(`[data-v="${k}"] [data-p]`)].map(i=>pm(i.value));continue}let x=d.querySelector(`[name=${k}]`).value.trim();
+if(r&&!x)return fe(`Preencha: ${l}.`);if(t=='m'){x=x===''?null:pm(x);if(x===null&&r||x===null&&d.querySelector(`[name=${k}]`).value.trim())return fe(`Valor inválido em: ${l}.`)}
+if(t=='n'){const n=pq(x);if(x!==''&&n===null)return fe(`Número inválido em: ${l}.`);x=n}v[k]=x}
+const e=ok(v);if(e)return fe(e);d.remove();render()};function fe(m){d.querySelector('#fe').textContent=m}}
+function show(t,txt){const d=document.createElement('div');d.className='ov';d.innerHTML=`<div class=md><h3>${t}</h3><textarea rows=12 readonly>${esc(txt)}</textarea><button class=bt id=cp>Copiar texto</button><button class="bt s" id=cl>Fechar</button></div>`;document.body.appendChild(d);const ta=d.querySelector('textarea');
+d.querySelector('#cp').onclick=async()=>{ta.select();try{await navigator.clipboard.writeText(txt);alert('Copiado.')}catch(e){alert('Texto selecionado. Use Copiar no menu do celular.')}};d.querySelector('#cl').onclick=()=>d.remove()}
+let R={t:'painel'},OB='',CAT='',Q='',ST='',TAB='resumo';
+const go=(t,id,tab)=>{R={t,id};TAB=tab||'resumo';render();scrollTo(0,0)};
+function ask(m,fn){const d=document.createElement('div');d.className='ov';d.innerHTML=`<div class=md><h3>Confirmar</h3><p>${esc(m)}</p><button class=bt id=ys>Sim</button><button class="bt s" id=no>Não</button></div>`;document.body.appendChild(d);d.querySelector('#no').onclick=()=>d.remove();d.querySelector('#ys').onclick=()=>{d.remove();fn()}}
+window.alert=m=>{const d=document.createElement('div');d.className='ov';d.innerHTML=`<div class=md><h3>Aviso</h3><p>${esc(m)}</p><button class=bt>OK</button></div>`;document.body.appendChild(d);d.querySelector('button').onclick=()=>d.remove()};
+// ---- Painel
+function vPainel(){const ocs=S.oc.filter(o=>!o.cancel&&(!OB||o.obra==OB)),ids=new Set(ocs.map(o=>o.id)),t=today();
+const tot=ocs.reduce((a,o)=>a+o.v,0),f=ocs.reduce((a,o)=>a+fat(o),0),ps=S.nf.filter(n=>n.st=='Válida'&&ids.has(n.oc)).flatMap(pars).filter(p=>!p.pg),sm=a=>brl(a.reduce((x,p)=>x+p.v,0));
+const mv=S.mov.filter(m=>m.data>=addD(t,-7)&&(!OB||m.obra==OB)).length,C=(l,v,c)=>`<div class=cd><small>${l}</small><b ${c?`style="color:var(${c})"`:''}>${v}</b></div>`;
+const low=S.mat.concat(S.epis).filter(m=>m.saldo<m.min).length;
+return`<select onchange="OB=this.value;render()"><option value="">Todas as obras</option>${S.obras.map(o=>`<option value=${o.id} ${o.id==OB?'selected':''}>${esc(o.nome)}</option>`).join('')}</select>
+<div class=g>${C('Ordens de Compra',ocs.length)}${C('Valor total das OCs',brl(tot))}${C('Valor faturado',brl(f))}${C('Restante das OCs',brl(tot-f))}${C('Boletos pendentes',sm(ps))}${C('Boletos vencidos',sm(ps.filter(p=>p.venc<t)),ps.some(p=>p.venc<t)&&'--er')}${C('Vencem em 7 dias',sm(ps.filter(p=>p.venc>=t&&p.venc<=addD(t,7))),'--wa')}${C('Materiais cadastrados',S.mat.length)}${C('Abaixo do mínimo',low,low&&'--er')}${C('Movimentações (7 dias)',mv)}</div>
+<h3 style="margin-top:16px">Atalhos</h3><button class=bt onclick="ocForm()">Nova OC</button><button class=bt onclick="nfForm()">Nova NF</button><button class=bt onclick="movForm('ENTRADA')">Entrada de estoque</button><button class=bt onclick="movForm('SAIDA')">Saída de estoque</button><button class="bt s" onclick="matForm()">Novo material</button><button class="bt s" onclick="exportBoletos()">Relatório de boletos em aberto (Excel)</button>
+<p class=mu>O filtro de obra não se aplica à contagem de materiais.</p>`}
+// ---- OCs
+function ocForm(o){if(!S.obras.length||!S.forn.length)return alert('Cadastre ao menos uma obra e um fornecedor primeiro (aba Cadastros).');
+form(o?'Editar OC':'Nova OC',[['numero','Número da OC','t',0,1],['obra','Obra','s',opt(S.obras,x=>x.nome),1],['forn','Fornecedor','s',opt(S.forn,x=>x.fantasia||x.razao),1],['data','Data','d',0,1],['descricao','Descrição','t'],['cc','Centro de custo','t'],['v','Valor contratado (R$)','m',0,1],['resp','Responsável','t'],['obs','Observações','a']],o||{data:today()},v=>{v.obra=+v.obra;v.forn=+v.forn;
+if(S.oc.some(x=>x.id!=o?.id&&x.obra==v.obra&&x.numero.toLowerCase()==v.numero.toLowerCase()))return'Já existe uma OC com este número nesta obra.';
+if(o){Object.assign(o,v);hist('OC editada',v.numero,o.id)}else{const n={id:uid(),...v};S.oc.push(n);hist('OC criada',v.numero,n.id)}save()})}
+function vOC(){const l=S.oc.filter(o=>(!OB||o.obra==OB)&&(!ST||ocSt(o)==ST)&&(o.numero+o.descricao+nm('forn',o.forn)).toLowerCase().includes(Q.toLowerCase()));
+return`<button class=bt onclick="ocForm()">+ Nova OC</button><input placeholder="Pesquisar OC, fornecedor ou descrição" value="${esc(Q)}" onchange="Q=this.value;render()">
+<select onchange="ST=this.value;render()"><option value="">Todos os status</option>${['Aberta','Parcialmente faturada','Faturada','Cancelada'].map(s=>`<option ${s==ST?'selected':''}>${s}</option>`).join('')}</select>
+${l.map(o=>`<div class=cd onclick="go('oc',${o.id})"><b>OC ${esc(o.numero)}</b> ${B(ocSt(o))}<div class=mu>${esc(nm('obras',o.obra))} · ${esc(nm('forn',o.forn))}</div><div>${brl(o.v)} · saldo ${brl(o.v-fat(o))}</div></div>`).join('')||'<p class=mu>Nenhuma OC encontrada.</p>'}`}
+function vOCd(){const o=by('oc',R.id),f=fat(o),nfs=S.nf.filter(n=>n.oc==o.id),pp=nfsV(o).flatMap(pars);
+const tabs=['resumo','nfs','pagamentos','histórico'].map(t=>`<button class="chip ${t==TAB?'on':''}" onclick="TAB='${t}';render()">${t}</button>`).join('');let b='';
+if(TAB=='resumo')b=`<div class=cd>${[['Obra',nm('obras',o.obra)],['Fornecedor',nm('forn',o.forn)],['Data',brd(o.data)],['Valor original',brl(o.v)],['NFs válidas',brl(f)],['Saldo para faturar',brl(o.v-f)],['Total pago',brl(pago(o))],['Total pendente',brl(f-pago(o))],['Descrição',o.descricao],['Centro de custo',o.cc],['Responsável',o.resp],['Observações',o.obs]].map(([a,c])=>`<div class=rw><span class=mu>${a}</span><span>${esc(c)}</span></div>`).join('')}</div><button class="bt s" onclick="ocForm(by('oc',${o.id}))">Editar OC</button>${o.cancel?'':`<button class="bt r" onclick="cancelOC(${o.id})">Cancelar OC</button>`}`;
+if(TAB=='nfs')b=(o.cancel?'':`<button class=bt onclick="nfForm(${o.id})">+ Nova NF</button>`)+(nfs.map(n=>`<div class=cd><b>NF ${esc(n.numero)}${n.serie?'/'+esc(n.serie):''}</b> ${B(n.st,n.st=='Válida'?'--ok':'--er')}<div>${brl(n.v)} · emissão ${brd(n.data)}</div>${n.st=='Válida'?`<button class="bt m s" onclick="nfEdit(${n.id})">Editar NF</button><button class="bt m r" onclick="cancelNF(${n.id})">Cancelar NF</button>`:''}</div>`).join('')||'<p class=mu>Nenhuma NF.</p>');
+if(TAB=='pagamentos')b=pp.map(p=>{const n=by('nf',p.nf);return`<div class=cd><b>NF ${esc(n.numero)} · parcela ${p.n}</b> ${B(pSt(p))}<div>${brl(p.v)} · vence ${brd(p.venc)}${p.pg?' · pago em '+brd(p.pg):''}${p.bol?' · boleto '+esc(p.bol):''}${p.forma?' · '+esc(p.forma):''}</div><button class="bt m s" onclick="parcEd(${p.id})">Editar vencimento/boleto</button>${p.pg?`<button class="bt m s" onclick="desPagar(${p.id})">Desfazer pagamento</button>`:`<button class="bt m" onclick="pagar(${p.id})">Registrar pagamento</button>`}</div>`}).join('')||'<p class=mu>Sem parcelas.</p>';
+if(TAB=='histórico')b=S.hist.filter(h=>h.ref==o.id).reverse().map(h=>`<div class=cd><b>${esc(h.a)}</b><div class=mu>${h.ts} · ${esc(h.t)}</div></div>`).join('')||'<p class=mu>Sem registros.</p>';
+return`<button class="bt s" onclick="go('oc')">← Voltar</button><h3>OC ${esc(o.numero)} ${B(ocSt(o))}</h3><button class=bt onclick="exportOC(${o.id})">Exportar OC completa em Excel</button>${tabs}${b}`}
+function nfForm(oid){const ocs=S.oc.filter(o=>!o.cancel);if(!ocs.length)return alert('Cadastre uma OC primeiro.');
+form('Nova Nota Fiscal',[['oc','OC','s',opt(ocs,o=>'OC '+o.numero+' · '+nm('forn',o.forn)),1],['numero','Número da NF','t',0,1],['serie','Série','t'],['chave','Chave de acesso (opcional)','t'],['data','Data de emissão','d',0,1],['v','Valor da NF (R$)','m',0,1],['forma','Forma de pagamento','s',['Parcelado em boletos','À vista antecipado (já pago, sem vencimento)']],['np','Nº de parcelas (se parcelado)','n'],['dv','Parcelas: vencimento e valor (ignorado se à vista)','V','np'],['dpg','Data do pagamento (se à vista; vazio = data de emissão)','d'],['descricao','Descrição','t'],['aut','Autorizar faturamento acima da OC?','s',['Não','Sim']],['obs','Observações','a']],{oc:oid,data:today(),np:1,v1:addD(today(),30)},v=>{
+const o=by('oc',v.oc);if(!(v.v>0))return'O valor da NF deve ser maior que zero.';const av=(v.forma||'').startsWith('À vista'),np=av?1:Math.floor(v.np);if(!av&&(!(np>=1&&np<=60)||v.dv.length!=np||v.dv.some(x=>!x)))return'Parcelado: informe de 1 a 60 parcelas e a data de vencimento de cada uma.';if(!av){if(v.dv_v.some(x=>x==null||x<=0))return'Informe o valor de cada parcela (maior que zero).';const sm=v.dv_v.reduce((a,b)=>a+b,0);if(sm!=v.v)return`A soma das parcelas (${brl(sm)}) deve ser igual ao valor da NF (${brl(v.v)}). Diferença: ${brl(v.v-sm)}.`;}
+if(S.nf.some(n=>n.forn==o.forn&&n.numero==v.numero&&(n.serie||'')==(v.serie||'')&&n.st=='Válida'))return'Já existe NF com este número e série para o fornecedor.';
+const exc=fat(o)+v.v-o.v;if(exc>0&&v.aut!='Sim')return`Esta NF ultrapassa o valor da OC em ${brl(exc)}. Para lançar, escolha Sim em Autorizar faturamento acima da OC.`;
+const n={id:uid(),oc:o.id,forn:o.forn,numero:v.numero,serie:v.serie||'',chave:v.chave,data:v.data,v:v.v,descricao:v.descricao,obs:v.obs,st:'Válida'};S.nf.push(n);
+if(av){const d=v.dpg||v.data;S.par.push({id:uid(),nf:n.id,n:1,v:v.v,venc:d,pg:d,forma:'À vista antecipado'})}else{for(let i=0;i<np;i++)S.par.push({id:uid(),nf:n.id,n:i+1,v:v.dv_v[i],venc:v.dv[i],pg:null})}
+hist('NF lançada'+(av?' (à vista antecipado, paga)':'')+(exc>0?' (acima da OC, autorizada)':''),`NF ${n.numero} ${brl(n.v)}`,o.id);save()})}
+function cancelNF(id){const n=by('nf',id);ask('Cancelar esta NF? O registro e o histórico serão mantidos.',()=>{n.st='Cancelada';hist('NF cancelada','NF '+n.numero,n.oc);save();render()})}
+function cancelOC(id){const o=by('oc',id);ask('Cancelar esta OC? O registro será mantido.',()=>{o.cancel=true;hist('OC cancelada',o.numero,o.id);save();render()})}
+function pagar(id){const p=by('par',id);form('Registrar pagamento',[['d','Data do pagamento','d',0,1]],{d:today()},v=>{p.pg=v.d;hist('Pagamento registrado',`Parcela ${p.n} ${brl(p.v)}`,by('nf',p.nf).oc);save()})}
+function desPagar(id){const p=by('par',id);ask('Desfazer este pagamento?',()=>{p.pg=null;hist('Pagamento desfeito','Parcela '+p.n,by('nf',p.nf).oc);save();render()})}
+// ---- Estoque
+function matForm(m){form(m?'Editar material':'Novo material',[['codigo','Código','t',0,1],['descricao','Descrição','t',0,1],['cat','Categoria','s',S.cats,1],['un','Unidade','s',S.uns,1],['marca','Marca','t'],['min','Estoque mínimo','n'],['max','Estoque máximo','n'],['local','Localização','t'],['v','Valor unitário (R$)','m'],['obs','Observações','a']],m||{min:0},v=>{
+if(S.mat.some(x=>x.id!=m?.id&&x.codigo.toLowerCase()==v.codigo.toLowerCase()))return'Já existe material com este código.';v.min=v.min||0;if(v.min<0)return'Estoque mínimo não pode ser negativo.';
+if(m)Object.assign(m,v);else{const n={id:uid(),saldo:0,...v};S.mat.push(n);hist('Material criado',v.descricao)}save()})}
+function mover(m,tipo,s,q,x){if(!(q>0))return'A quantidade deve ser maior que zero.';if(s<0&&q>m.saldo)return`Saldo insuficiente: disponível ${num(m.saldo)} ${m.un}.`;
+m.saldo=Math.round((m.saldo+s*q)*1000)/1000;S.mov.push({id:uid(),tipo,[m.ep?'epi':'mat']:m.id,s,q,apos:m.saldo,ts:new Date().toISOString(),...x});save()}
+function movForm(tipo,mid){if(!S.mat.length)return alert('Cadastre um material primeiro.');const E=tipo=='ENTRADA',M=['mat','Material','s',opt(S.mat,m=>m.codigo+' · '+m.descricao+' ('+num(m.saldo)+' '+m.un+')'),1],O=['obra','Obra','s',opt(S.obras,x=>x.nome,1),!E],R2=['resp','Responsável','t'];
+form(E?'Entrada de estoque':'Saída de estoque',E?[M,['data','Data','d',0,1],['q','Quantidade','n',0,1],['v','Valor unitário (R$)','m',0,1],['forn','Fornecedor','s',opt(S.forn,x=>x.fantasia||x.razao,1)],['nf','NF','t'],['oc','OC','s',opt(S.oc,o=>'OC '+o.numero,1)],O,R2,['obs','Observações','a']]:[M,['data','Data','d',0,1],['q','Quantidade','n',0,1],O,['destino','Setor ou destino','t'],R2,['motivo','Motivo','t'],['cc','Centro de custo','t'],['obs','Observações','a']],{mat:mid,data:today()},v=>{
+const m=by('mat',v.mat),x={data:v.data,obra:+v.obra||null,resp:v.resp,obs:v.obs};
+if(E)Object.assign(x,{vu:v.v,tot:Math.round(v.q*v.v),forn:+v.forn||null,nf:v.nf,oc:+v.oc||null});else Object.assign(x,{destino:v.destino,motivo:v.motivo,cc:v.cc});
+return mover(m,tipo,E?1:-1,v.q,x)})}
+function estornar(id){const o=S.mov.find(x=>x.id==id);if(o.est||o.tipo=='ESTORNO')return;ask('Estornar esta movimentação? Será criado um lançamento contrário.',()=>doEst(o))}
+function doEst(o){
+const r=mover(o.epi?by('epis',o.epi):by('mat',o.mat),'ESTORNO',-o.s,o.q,{data:today(),obra:o.obra,estorno:o.id,obs:'Estorno da movimentação #'+o.id});if(r)return alert(r);o.est=true;save();render()}
+function vMatL(){const l=S.mat.filter(m=>(!CAT||m.cat==CAT)&&(m.codigo+m.descricao+(m.marca||'')).toLowerCase().includes(Q.toLowerCase()));
+return`<button class=bt onclick="matForm()">+ Novo material</button><button class="bt s" onclick="movForm('ENTRADA')">Entrada</button><button class="bt s" onclick="movForm('SAIDA')">Saída</button>
+<input placeholder="Pesquisar código, descrição ou marca" value="${esc(Q)}" onchange="Q=this.value;render()"><div>${['',...S.cats].map(c=>`<button class="chip ${c==CAT?'on':''}" onclick="CAT='${esc(c)}';render()">${c||'Todas'}</button>`).join('')}<button class=chip onclick="novaCat()">+ categoria</button><button class=chip onclick="catMgr('cats')">gerenciar</button></div>
+${l.map(m=>{const[s,c]=stk(m);return`<div class=cd onclick="go('mat',${m.id})"><b>${esc(m.codigo)} · ${esc(m.descricao)}</b> ${B(s,c)}<div>${num(m.saldo)} ${esc(m.un)} <span class=mu>(mín. ${num(m.min)}) · ${esc(m.cat)}</span></div></div>`}).join('')||'<p class=mu>Nenhum material. Cadastre o primeiro.</p>'}
+`}
+function novaCat(){form('Nova categoria',[['n','Nome','t',0,1]],{},v=>{if(S.cats.some(c=>c.toLowerCase()==v.n.toLowerCase()))return'Categoria já existe.';S.cats.push(v.n);save()})}
+function vMat(){const m=by('mat',R.id),[s,c]=stk(m),mv=S.mov.filter(x=>x.mat==m.id).reverse();
+return`<button class="bt s" onclick="go('est')">← Voltar</button><h3>${esc(m.descricao)} ${B(s,c)}</h3><div class=cd><div class=rw><span>Saldo atual</span><b>${num(m.saldo)} ${esc(m.un)}</b></div><div class=rw><span class=mu>Mínimo / Máximo</span><span>${num(m.min)} / ${m.max==null?'—':num(m.max)}</span></div><div class=rw><span class=mu>Valor unitário</span><span>${m.v==null?'—':brl(m.v)}</span></div><div class=rw><span class=mu>Categoria</span><span>${esc(m.cat)}</span></div></div>
+<button class=bt onclick="movForm('ENTRADA',${m.id})">Entrada</button><button class=bt onclick="movForm('SAIDA',${m.id})">Saída</button><button class="bt s" onclick="matForm(by('mat',${m.id}))">Editar material</button>
+<h3>Histórico</h3>${mv.map(x=>`<div class=cd><b>${x.tipo} ${x.s>0?'+':'−'}${num(x.q)}</b> <span class=mu>${brd(x.data)} · saldo ${num(x.apos)}</span>${x.est?' '+B('Estornada','--wa'):''}<div class=mu>${esc(nm('obras',x.obra))} ${esc(x.destino||x.nf||'')} ${x.tot?brl(x.tot):''}</div>${x.tipo=='ESTORNO'||x.est?'':`<button class="bt m s" onclick="estornar(${x.id})">Estornar</button>`}</div>`).join('')||'<p class=mu>Sem movimentações.</p>'}`}
+async function exportOC(id){const o=by('oc',id);if(typeof XLSX=='undefined')return alert('Não foi possível carregar o gerador de Excel. Verifique a internet e recarregue a página.');
+let dl=null;try{dl=window.claude&&await claude.use('downloads')}catch(e){}
+if(!dl)dl={save:async({filename,data})=>{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([data],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}));a.download=filename;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),4000)}};
+const m=c=>c/100,$=v=>({$:v}),nfs=S.nf.filter(n=>n.oc==o.id),ps=nfs.flatMap(pars),f=fat(o),A=[],M=[],mon=[];
+const row=a=>{A.push(a);return A.length-1},mg=(r,a,b)=>M.push({s:{r,c:a},e:{r,c:b}});
+const sec=t=>{A.push([]);mg(row([t.toUpperCase()]),0,8)},hd=a=>row(a.map(x=>x.toUpperCase())),vz=t=>mg(row([t]),0,8);
+mg(row(['RELATÓRIO DA ORDEM DE COMPRA Nº '+o.numero]),0,8);vz('Exportado em '+new Date().toLocaleString('pt-BR'));
+sec('1. Resumo da OC');
+[['Número da OC',o.numero],['Status',ocSt(o)],['Obra',nm('obras',o.obra)],['Fornecedor',nm('forn',o.forn)],['Data',brd(o.data)],['Descrição',o.descricao||''],['Centro de custo',o.cc||''],['Responsável',o.resp||''],['Observações',o.obs||''],['Valor original da OC',$(m(o.v))],['Total das NFs válidas',$(m(f))],['Saldo para faturamento',$(m(o.v-f))],['Total pago',$(m(pago(o)))],['Total pendente',$(m(f-pago(o)))]].forEach(([a,b])=>mg(row([a,b]),1,8));
+sec('2. Notas fiscais');hd(['NF','Série','Emissão','Valor','Status','Parcelas','Chave de acesso','Descrição','Observações']);
+if(!nfs.length)vz('Nenhuma NF lançada.');
+nfs.forEach(n=>row([n.numero,n.serie||'',brd(n.data),$(m(n.v)),n.st,pars(n).length,n.chave||'',n.descricao||'',n.obs||'']));
+sec('3. Parcelas e pagamentos');hd(['NF','Parcela','Vencimento','Valor','Nº do boleto','Situação','Data do pagamento','Forma de pagamento','Observações']);
+if(!ps.length)vz('Nenhuma parcela lançada.');
+ps.forEach(p=>{const n=by('nf',p.nf);row([n.numero+(n.serie?'/'+n.serie:''),p.n,p.forma?'À vista':brd(p.venc),$(m(p.v)),p.bol||'',pSt(p),brd(p.pg),p.forma||'Boleto',(p.obs||'')+(n.st=='Cancelada'?' (NF cancelada)':'')])});
+sec('4. Histórico de lançamentos');const hh=hd(['Data/hora','Ação','','','Detalhe']);mg(hh,1,3);mg(hh,4,8);
+const H=S.hist.filter(h=>h.ref==o.id);if(!H.length)vz('Sem registros.');
+H.forEach(h=>{const r=row([h.ts,h.a,'','',h.t]);mg(r,1,3);mg(r,4,8)});
+sec('5. Entradas de estoque ligadas a esta OC');hd(['Data','Tipo','Material','Quantidade','Valor unitário','Valor total','NF','Obra','Responsável']);
+const E=S.mov.filter(x=>x.oc==o.id);if(!E.length)vz('Nenhuma entrada de estoque vinculada.');
+E.forEach(x=>row([brd(x.data),x.tipo,nm('mat',x.mat),x.q,x.vu==null?'':$(m(x.vu)),x.tot==null?'':$(m(x.tot)),x.nf||'',nm('obras',x.obra),x.resp||'']));
+const A2=A.map((r,i)=>r.map((c,j)=>{if(c&&typeof c=='object'&&'$' in c){mon.push([i,j]);return c.$}return c}));
+const ws=XLSX.utils.aoa_to_sheet(A2);mon.forEach(([r,c])=>{const a=ws[XLSX.utils.encode_cell({r,c})];if(a)a.z='"R$" #,##0.00'});
+ws['!merges']=M;ws['!cols']=[22,12,14,16,16,12,22,30,30].map(w=>({wch:w}));ws['!margins']={left:.4,right:.4,top:.5,bottom:.5,header:.3,footer:.3};
+const W=XLSX.utils.book_new();XLSX.utils.book_append_sheet(W,ws,'Relatório da OC');
+try{const buf=XLSX.write(W,{bookType:'xlsx',type:'array'});await dl.save({filename:'OC_'+String(o.numero).replace(/[^\w.-]+/g,'_')+'.xlsx',data:buf})}catch(e){if(e&&e.code!='declined')alert('Não foi possível salvar o arquivo: '+(e.message||e))}}
+
+function nfEdit(id){const n=by('nf',id),o=by('oc',n.oc),pp=pars(n).sort((a,b)=>a.n-b.n),bloq=pp.some(p=>p.pg),oldV=n.v,
+F=[['numero','Número da NF','t',0,1],['serie','Série','t'],['chave','Chave de acesso','t'],['data','Data de emissão','d',0,1],['descricao','Descrição','t'],['obs','Observações','a']];
+if(!bloq)F.push(['v','Valor da NF (R$)','m',0,1],['np','Número de parcelas','n',0,1],['dv','Parcelas: vencimento e valor','V','np'],['aut','Autorizar faturamento acima da OC?','s',['Não','Sim']]);
+form('Editar NF '+n.numero+(bloq?' (valor e parcelas bloqueados: há parcela paga)':''),F,{...n,np:pp.length,dv:pp.map(p=>p.venc),dv_v:pp.map(p=>p.v)},v=>{
+if(S.nf.some(x=>x.id!=n.id&&x.forn==n.forn&&x.numero==v.numero&&(x.serie||'')==(v.serie||'')&&x.st=='Válida'))return'Já existe NF com este número e série para o fornecedor.';
+if(!bloq){if(!(v.v>0))return'O valor da NF deve ser maior que zero.';const np=Math.floor(v.np);if(!(np>=1&&np<=60)||v.dv.length!=np||v.dv.some(x=>!x))return'Informe de 1 a 60 parcelas e a data de vencimento de cada uma.';if(v.dv_v.some(x=>x==null||x<=0))return'Informe o valor de cada parcela (maior que zero).';const sm=v.dv_v.reduce((a,b)=>a+b,0);if(sm!=v.v)return`A soma das parcelas (${brl(sm)}) deve ser igual ao valor da NF (${brl(v.v)}). Diferença: ${brl(v.v-sm)}.`;
+const tot=fat(o)-n.v+v.v;if(tot>o.v&&v.v>n.v&&v.aut!='Sim')return`A NF passa a ultrapassar o valor da OC em ${brl(tot-o.v)}. Para salvar, escolha Sim em Autorizar faturamento acima da OC.`;
+const old=pp.map(p=>({bol:p.bol,obs:p.obs}));S.par=S.par.filter(p=>p.nf!=n.id);const base=Math.floor(v.v/np);
+for(let i=0;i<np;i++)S.par.push({id:uid(),nf:n.id,n:i+1,v:v.dv_v[i],venc:v.dv[i],pg:null,bol:old[i]?.bol,obs:old[i]?.obs});n.v=v.v}
+Object.assign(n,{numero:v.numero,serie:v.serie||'',chave:v.chave,data:v.data,descricao:v.descricao,obs:v.obs});
+hist('NF editada','NF '+n.numero+(n.v!=oldV?': valor '+brl(oldV)+' → '+brl(n.v):'')+(bloq?'':' · '+pars(n).length+' parcela(s)'),n.oc);save()})}
+
+async function exportBoletos(){if(typeof XLSX=='undefined')return alert('Não foi possível carregar o gerador de Excel. Verifique a internet e recarregue a página.');
+let dl=null;try{dl=window.claude&&await claude.use('downloads')}catch(e){}
+if(!dl)dl={save:async({filename,data})=>{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([data],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}));a.download=filename;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),4000)}};
+const m=c=>c/100,$=v=>({$:v}),t=today(),L=10,A=[],M=[],mon=[];
+const row=a=>{A.push(a);return A.length-1},mg=(r,a,b)=>M.push({s:{r,c:a},e:{r,c:b}}),vz=x=>mg(row([x]),0,L),sec=x=>{A.push([]);vz(x.toUpperCase())},hd=a=>row(a.map(x=>x.toUpperCase()));
+const ocs=S.oc.filter(o=>!o.cancel&&(!OB||o.obra==OB)),ids=new Set(ocs.map(o=>o.id));
+const ab=S.nf.filter(n=>n.st=='Válida'&&ids.has(n.oc)).flatMap(n=>pars(n).filter(p=>!p.pg).map(p=>({p,n,dd:Math.round((new Date(p.venc+'T12:00:00')-new Date(t+'T12:00:00'))/864e5)}))).sort((a,b)=>a.p.venc<b.p.venc?-1:1);
+const sm=a=>a.reduce((x,y)=>x+y.p.v,0),ven=ab.filter(x=>x.p.venc<t),hoje=ab.filter(x=>x.p.venc==t),av=ab.filter(x=>x.p.venc>t);
+vz('RELATÓRIO DE BOLETOS EM ABERTO');vz('Exportado em '+new Date().toLocaleString('pt-BR')+' · Obra: '+(OB?nm('obras',OB):'Todas as obras'));
+sec('Resumo geral');
+[['Total em aberto',$(m(sm(ab)))],['Vencidos ('+ven.length+')',$(m(sm(ven)))],['Vencem hoje ('+hoje.length+')',$(m(sm(hoje)))],['A vencer ('+av.length+')',$(m(sm(av)))],['Quantidade de boletos em aberto',ab.length],['Fornecedores com boletos em aberto',new Set(ab.map(x=>x.n.forn)).size]].forEach(([a,b])=>mg(row([a,b]),1,L));
+if(!ab.length)vz('Nenhum boleto em aberto.');
+const cn=c=>String(c||'').replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/,'$1.$2.$3/$4-$5');
+[...new Set(ab.map(x=>x.n.forn))].map(id=>by('forn',id)).sort((a,b)=>(a.razao||'').localeCompare(b.razao||'')).forEach(f=>{
+const it=ab.filter(x=>x.n.forn==f.id);sec('Fornecedor: '+f.razao+(f.fantasia?' ('+f.fantasia+')':''));
+[['Razão social',f.razao],['Nome fantasia',f.fantasia||''],['CNPJ',cn(f.cnpj)],['Telefone',f.tel||''],['E-mail',f.email||''],['Contato',f.contato||''],['Observações',f.obs||'']].forEach(([a,b])=>mg(row([a,b]),1,L));
+A.push([]);hd(['NF','OC','Obra','Emissão','Parcela','Vencimento','Situação','Prazo','Nº do boleto','Valor','Observações']);
+it.forEach(({p,n,dd})=>{const o=by('oc',n.oc);row([n.numero+(n.serie?'/'+n.serie:''),o.numero,nm('obras',o.obra),brd(n.data),p.n+'/'+pars(n).length,brd(p.venc),pSt(p),dd<0?(-dd)+' dia(s) em atraso':dd==0?'Hoje':'em '+dd+' dia(s)',p.bol||'',$(m(p.v)),p.obs||''])});
+const r=row(['','','','','','','','','SUBTOTAL',$(m(sm(it))),'']);});
+if(ab.length){A.push([]);row(['','','','','','','','','TOTAL GERAL',$(m(sm(ab))),'']);}
+const A2=A.map((r,i)=>r.map((c,j)=>{if(c&&typeof c=='object'&&'$' in c){mon.push([i,j]);return c.$}return c}));
+const ws=XLSX.utils.aoa_to_sheet(A2);mon.forEach(([r,c])=>{const a=ws[XLSX.utils.encode_cell({r,c})];if(a)a.z='"R$" #,##0.00'});
+ws['!merges']=M;ws['!cols']=[16,12,20,12,10,13,12,18,16,16,26].map(w=>({wch:w}));ws['!margins']={left:.4,right:.4,top:.5,bottom:.5,header:.3,footer:.3};
+const W=XLSX.utils.book_new();XLSX.utils.book_append_sheet(W,ws,'Boletos em aberto');
+try{const buf=XLSX.write(W,{bookType:'xlsx',type:'array'});await dl.save({filename:'Boletos_em_aberto_'+t+'.xlsx',data:buf})}catch(e){if(e&&e.code!='declined')alert('Não foi possível salvar o arquivo: '+(e.message||e))}}
+// ---- EPIs, equipamentos, parcelas
+let SUB='mat',CE='';
+function vEst(){return`<div>${[['mat','Materiais'],['epi','EPIs'],['eq','Equipamentos']].map(([k,l])=>`<button class="chip ${k==SUB?'on':''}" onclick="SUB='${k}';render()">${l}</button>`).join('')}</div>`+(SUB=='mat'?vMatL():SUB=='epi'?vEpi():vEqL())}
+function parcEd(id){const p=by('par',id);form('Parcela '+p.n,[['bol','Número do boleto','t'],['venc','Vencimento','d',0,1],['obs','Observações','a']],{bol:p.bol,venc:p.venc,obs:p.obs},v=>{Object.assign(p,v);hist('Parcela editada','Parcela '+p.n+' boleto '+(v.bol||'—'),by('nf',p.nf).oc);save()})}
+function catMgr(k){const it=()=>k=='cats'?S.mat:S.epis,d=document.createElement('div');d.className='ov';const dr=()=>{d.innerHTML=`<div class=md><h3>Categorias</h3>${S[k].map((c,i)=>`<div class=cd>${esc(c)}<br><button class="bt m s" data-r=${i}>Renomear</button><button class="bt m r" data-x=${i}>Excluir</button></div>`).join('')}<button class="bt s" data-f=1>Fechar</button></div>`};dr();
+d.onclick=e=>{const t=e.target.dataset,c=S[k][t.r??t.x];if(t.f){d.remove();render()}else if(t.r!==undefined)form('Renomear categoria',[['n','Novo nome','t',0,1]],{n:c},v=>{if(S[k].includes(v.n)&&v.n!=c)return'Já existe.';it().forEach(m=>{if(m.cat==c)m.cat=v.n});S[k][t.r]=v.n;save();dr()});else if(t.x!==undefined){if(it().some(m=>m.cat==c))alert('Há itens nesta categoria. Mude a categoria deles antes de excluir.');else ask('Excluir a categoria '+c+'?',()=>{S[k].splice(t.x,1);save();dr()})}};document.body.appendChild(d)}
+function novaEC(){form('Nova categoria de EPI',[['n','Nome','t',0,1]],{},v=>{if(S.ecats.some(c=>c.toLowerCase()==v.n.toLowerCase()))return'Categoria já existe.';S.ecats.push(v.n);save()})}
+function epiForm(e){form(e?'Editar EPI':'Novo EPI',[['codigo','Código','t',0,1],['nome','Nome','t',0,1],['cat','Categoria','s',S.ecats,1],['marca','Marca','t'],['modelo','Modelo','t'],['tam','Tamanho','t'],['ca','CA','t'],['val','Validade do CA','d'],['un','Unidade','s',S.uns,1],['min','Estoque mínimo','n'],['local','Localização','t'],['v','Valor unitário (R$)','m'],['forn','Fornecedor','s',opt(S.forn,x=>x.fantasia||x.razao,1)],['obs','Observações','a']],e||{min:0,un:'UN'},v=>{
+if(S.epis.some(x=>x.id!=e?.id&&x.codigo.toLowerCase()==v.codigo.toLowerCase()))return'Já existe EPI com este código.';v.min=v.min||0;if(v.min<0)return'Estoque mínimo não pode ser negativo.';v.forn=+v.forn||null;
+if(e)Object.assign(e,v);else{S.epis.push({id:uid(),ep:true,saldo:0,...v});hist('EPI criado',v.nome)}save()})}
+function epiMov(tipo,id){if(!S.epis.length)return alert('Cadastre um EPI primeiro.');const E=tipo=='ENTRADA';
+form(E?'Entrada de EPI':'Entrega de EPI',[['e','EPI','s',opt(S.epis,x=>x.codigo+' · '+x.nome+' ('+num(x.saldo)+' '+x.un+')'),1],['data','Data','d',0,1],['q','Quantidade','n',0,1],...(E?[['v','Valor unitário (R$)','m',0,1],['forn','Fornecedor','s',opt(S.forn,x=>x.fantasia||x.razao,1)],['nf','NF','t']]:[['func','Funcionário','t',0,1],['mt','Matrícula','t'],['resp','Responsável pela entrega','t',0,1]]),['obs','Observações','a']],{e:id,data:today()},v=>{const e=by('epis',v.e);
+if(!E&&e.val&&e.val<today())return'CA vencido: não é possível entregar. Atualize a validade do CA no cadastro do EPI.';
+return mover(e,tipo,E?1:-1,v.q,E?{data:v.data,vu:v.v,tot:Math.round(v.q*v.v),forn:+v.forn||null,nf:v.nf,obs:v.obs}:{data:v.data,func:v.func,mt:v.mt,resp:v.resp,obs:v.obs})})}
+function vEpi(){const l=S.epis.filter(e=>(!CE||e.cat==CE)&&(e.codigo+e.nome+(e.ca||'')).toLowerCase().includes(Q.toLowerCase()));
+return`<button class=bt onclick="epiForm()">+ Novo EPI</button><button class="bt s" onclick="epiMov('ENTRADA')">Entrada</button><button class="bt s" onclick="epiMov('SAIDA')">Entrega ao funcionário</button><input placeholder="Pesquisar código, nome ou CA" value="${esc(Q)}" onchange="Q=this.value;render()"><div>${['',...S.ecats].map(c=>`<button class="chip ${c==CE?'on':''}" onclick="CE='${esc(c)}';render()">${c||'Todas'}</button>`).join('')}<button class=chip onclick="novaEC()">+ categoria</button><button class=chip onclick="catMgr('ecats')">gerenciar</button></div>
+${l.map(e=>{const[s,c]=stk(e);return`<div class=cd onclick="go('epi',${e.id})"><b>${esc(e.codigo)} · ${esc(e.nome)}</b> ${B(s,c)}${e.val&&e.val<today()?' '+B('CA vencido','--er'):''}<div>${num(e.saldo)} ${esc(e.un)} <span class=mu>(mín. ${num(e.min)}) · CA ${esc(e.ca)}</span></div></div>`}).join('')||'<p class=mu>Nenhum EPI cadastrado.</p>'}`}
+function vEpiD(){const e=by('epis',R.id),[s,c]=stk(e),mv=S.mov.filter(x=>x.epi==e.id).reverse();
+return`<button class="bt s" onclick="go('est')">← Voltar</button><h3>${esc(e.nome)} ${B(s,c)}</h3><div class=cd>${[['Saldo',num(e.saldo)+' '+e.un],['Categoria',e.cat],['Marca/Modelo',(e.marca||'')+' '+(e.modelo||'')],['Tamanho',e.tam],['CA',e.ca],['Validade do CA',brd(e.val)],['Localização',e.local],['Valor unitário',e.v==null?'':brl(e.v)],['Fornecedor',nm('forn',e.forn)]].map(([a,b])=>`<div class=rw><span class=mu>${a}</span><span>${esc(b)}</span></div>`).join('')}</div>
+<button class=bt onclick="epiMov('ENTRADA',${e.id})">Entrada</button><button class=bt onclick="epiMov('SAIDA',${e.id})">Entrega ao funcionário</button><button class="bt s" onclick="epiForm(by('epis',${e.id}))">Editar EPI</button><h3>Histórico</h3>
+${mv.map(x=>`<div class=cd><b>${x.tipo} ${x.s>0?'+':'−'}${num(x.q)}</b> <span class=mu>${brd(x.data)} · saldo ${num(x.apos)}</span>${x.est?' '+B('Estornada','--wa'):''}<div class=mu>${esc(x.func||'')} ${x.mt?'(mat. '+esc(x.mt)+')':''} ${x.resp?'· entregue por '+esc(x.resp):''}</div>${x.tipo=='ESTORNO'||x.est?'':`<button class="bt m s" onclick="estornar(${x.id})">Estornar</button>`}</div>`).join('')||'<p class=mu>Sem movimentações.</p>'}`}
+const eqc=s=>({'Disponível':'--ok','Em uso':'--b','Emprestado':'--wa','Em manutenção':'--wa','Danificado':'--er','Baixado':'--ts'}[s]);
+function eqForm(e){form(e?'Editar equipamento':'Novo equipamento',[['codigo','Código','t',0,1],['nome','Nome','t',0,1],['cat','Categoria','t'],['marca','Marca','t'],['modelo','Modelo','t'],['pat','Patrimônio','t'],['serie','Número de série','t'],['estado','Estado de conservação','s',['Novo','Bom','Regular','Ruim']],['local','Localização','t'],['resp','Responsável','t'],['v','Valor (R$)','m']],e||{estado:'Bom'},v=>{
+if(S.eqp.some(x=>x.id!=e?.id&&x.codigo.toLowerCase()==v.codigo.toLowerCase()))return'Já existe equipamento com este código.';
+if(e)Object.assign(e,v);else{const n={id:uid(),status:'Disponível',...v};S.eqp.push(n);S.eh.push({id:uid(),eq:n.id,ts:new Date().toLocaleString('pt-BR'),t:'Cadastrado',d:''})}save()})}
+function vEqL(){const l=S.eqp.filter(e=>(e.codigo+e.nome+(e.pat||'')+(e.serie||'')).toLowerCase().includes(Q.toLowerCase()));
+return`<button class=bt onclick="eqForm()">+ Novo equipamento</button><input placeholder="Pesquisar código, nome, patrimônio ou série" value="${esc(Q)}" onchange="Q=this.value;render()">${l.map(e=>`<div class=cd onclick="go('eq',${e.id})"><b>${esc(e.codigo)} · ${esc(e.nome)}</b> ${B(e.status,eqc(e.status))}<div class=mu>${esc(e.local)} ${e.resp?'· '+esc(e.resp):''}</div></div>`).join('')||'<p class=mu>Nenhum equipamento cadastrado.</p>'}`}
+function eqAct(id,t){const e=by('eqp',id),L={ret:'Retirada',dev:'Devolução',tr:'Transferência',man:'Manutenção',dan:'Dano',bx:'Baixa'},O=['obs','Observações','a'],F={ret:[['p','Retirado por','t',0,1],['st','Situação','s',['Em uso','Emprestado']],O],dev:[['est','Estado de conservação','s',['Bom','Regular','Ruim','Danificado']],O],tr:[['local','Novo local','t',0,1],['p','Novo responsável','t'],O],man:[['obs','Descrição da manutenção','a',0,1]],dan:[['obs','Descrição do dano','a',0,1]],bx:[['obs','Motivo da baixa','a',0,1]]};
+form(L[t],F[t],{},v=>{if(t=='ret'){e.status=v.st;e.resp=v.p}if(t=='dev'){e.status=v.est=='Danificado'?'Danificado':'Disponível';e.estado=v.est;e.resp=''}if(t=='tr'){e.local=v.local;if(v.p)e.resp=v.p}if(t=='man')e.status='Em manutenção';if(t=='dan')e.status='Danificado';if(t=='bx')e.status='Baixado';
+S.eh.push({id:uid(),eq:id,ts:new Date().toLocaleString('pt-BR'),t:L[t],d:v.obs||v.p||v.local||''});save()})}
+function vEqD(){const e=by('eqp',R.id),st=e.status,ok={ret:st=='Disponível',dev:st!='Disponível'&&st!='Baixado',tr:st!='Baixado',man:st!='Baixado'&&st!='Em manutenção',dan:st!='Baixado'&&st!='Danificado',bx:st!='Baixado'};
+return`<button class="bt s" onclick="go('est')">← Voltar</button><h3>${esc(e.nome)} ${B(st,eqc(st))}</h3><div class=cd>${[['Categoria',e.cat],['Marca/Modelo',(e.marca||'')+' '+(e.modelo||'')],['Patrimônio',e.pat],['Série',e.serie],['Conservação',e.estado],['Local',e.local],['Responsável',e.resp],['Valor',e.v==null?'':brl(e.v)]].map(([a,b])=>`<div class=rw><span class=mu>${a}</span><span>${esc(b)}</span></div>`).join('')}</div>
+${[['ret','Registrar retirada'],['dev','Registrar devolução / retorno'],['tr','Transferir'],['man','Enviar para manutenção'],['dan','Registrar dano'],['bx','Dar baixa']].filter(a=>ok[a[0]]).map(([k,l])=>`<button class="bt ${k=='bx'?'r':''}" onclick="eqAct(${e.id},'${k}')">${l}</button>`).join('')}<button class="bt s" onclick="eqForm(by('eqp',${e.id}))">Editar dados</button><h3>Histórico</h3>
+${S.eh.filter(x=>x.eq==e.id).reverse().map(x=>`<div class=cd><b>${x.t}</b> <span class=mu>${x.ts}</span><div class=mu>${esc(x.d)}</div></div>`).join('')}`}
+// ---- Cadastros
+function obraForm(o){form(o?'Editar obra':'Nova obra',[['codigo','Código','t',0,1],['nome','Nome','t',0,1],['cliente','Cliente','t'],['resp','Responsável','t'],['ini','Data de início','d'],['fim','Previsão de término','d'],['st','Status','s',['Planejada','Em andamento','Paralisada','Concluída','Cancelada']]],o||{st:'Em andamento'},v=>{
+if(S.obras.some(x=>x.id!=o?.id&&x.codigo.toLowerCase()==v.codigo.toLowerCase()))return'Já existe obra com este código.';if(v.ini&&v.fim&&v.fim<v.ini)return'O término não pode ser antes do início.';
+if(o)Object.assign(o,v);else S.obras.push({id:uid(),...v});save()})}
+function fornForm(f){form(f?'Editar fornecedor':'Novo fornecedor',[['razao','Razão social','t',0,1],['fantasia','Nome fantasia','t'],['cnpj','CNPJ','t',0,1],['tel','Telefone','t'],['email','E-mail','t'],['contato','Contato','t'],['obs','Observações','a']],f,v=>{
+if(!cnpjOk(v.cnpj))return'CNPJ inválido.';const d=v.cnpj.replace(/\D/g,'');if(S.forn.some(x=>x.id!=f?.id&&x.cnpj==d))return'Já existe fornecedor com este CNPJ.';
+if(v.email&&!/^\S+@\S+\.\S+$/.test(v.email))return'E-mail inválido.';v.cnpj=d;if(f)Object.assign(f,v);else S.forn.push({id:uid(),...v});save()})}
+function vCad(){return`<h3>Obras</h3><button class=bt onclick="obraForm()">+ Nova obra</button>${S.obras.map(o=>`<div class=cd onclick="obraForm(by('obras',${o.id}))"><b>${esc(o.codigo)} · ${esc(o.nome)}</b> ${B(o.st,'--b')}<div class=mu>${esc(o.cliente)} ${o.ini?'· início '+brd(o.ini):''}</div></div>`).join('')||'<p class=mu>Nenhuma obra.</p>'}
+<h3>Fornecedores</h3><button class=bt onclick="fornForm()">+ Novo fornecedor</button>${S.forn.map(f=>{const pend=S.nf.filter(n=>n.forn==f.id&&n.st=='Válida').flatMap(pars).filter(p=>!p.pg).reduce((a,p)=>a+p.v,0);return`<div class=cd onclick="fornForm(by('forn',${f.id}))"><b>${esc(f.fantasia||f.razao)}</b><div class=mu>${esc(f.cnpj)} · ${S.oc.filter(o=>o.forn==f.id&&!o.cancel).length} OC(s) · pendente ${brl(pend)}</div></div>`}).join('')||'<p class=mu>Nenhum fornecedor.</p>'}`}
+// ---- Mais: relatórios e backup
+const q=r=>r.map(l=>l.map(c=>`"${String(c??'').replace(/"/g,'""')}"`).join(';')).join('\n');
+function rel(k){const par=S.par.filter(p=>by('nf',p.nf).st=='Válida'),nfn=p=>{const n=by('nf',p.nf);return n.numero+'/'+n.serie},R={
+oc:[['Número','Data','Obra','Fornecedor','Valor','Faturado','Saldo','Pago','Status'],...S.oc.map(o=>[o.numero,brd(o.data),nm('obras',o.obra),nm('forn',o.forn),cs(o.v),cs(fat(o)),cs(o.v-fat(o)),cs(pago(o)),ocSt(o)])],
+nf:[['NF','Série','OC','Fornecedor','Emissão','Valor','Status'],...S.nf.map(n=>[n.numero,n.serie,by('oc',n.oc).numero,nm('forn',n.forn),brd(n.data),cs(n.v),n.st])],
+bol:[['NF','Parcela','Vencimento','Valor','Status'],...par.filter(p=>!p.pg).map(p=>[nfn(p),p.n,brd(p.venc),cs(p.v),pSt(p)])],
+pag:[['NF','Parcela','Pago em','Valor'],...par.filter(p=>p.pg).map(p=>[nfn(p),p.n,brd(p.pg),cs(p.v)])],
+est:[['Código','Descrição','Categoria','Saldo','Unid.','Mínimo','Situação'],...S.mat.map(m=>[m.codigo,m.descricao,m.cat,num(m.saldo),m.un,num(m.min),stk(m)[0]])],
+min:[['Código','Descrição','Saldo','Mínimo'],...S.mat.filter(m=>m.saldo<m.min).map(m=>[m.codigo,m.descricao,num(m.saldo),num(m.min)])],
+epi:[['Código','Nome','CA','Validade CA','Saldo','Mínimo','Situação'],...S.epis.map(e=>[e.codigo,e.nome,e.ca,brd(e.val),num(e.saldo),num(e.min),stk(e)[0]])],
+eq:[['Código','Nome','Patrimônio','Status','Local','Responsável'],...S.eqp.map(e=>[e.codigo,e.nome,e.pat,e.status,e.local,e.resp])],
+mov:[['Data','Tipo','Material','Qtd','Saldo após','Obra'],...S.mov.map(x=>[brd(x.data),x.tipo,x.epi?nm('epis',x.epi):nm('mat',x.mat),(x.s>0?'':'-')+num(x.q),num(x.apos),nm('obras',x.obra)])]};show('Relatório (CSV, separado por ;)',q(R[k]))}
+function vMais(){return`<h3>Relatórios</h3>${[['oc','Ordens de Compra'],['nf','Notas Fiscais'],['bol','Boletos pendentes'],['pag','Pagamentos'],['est','Estoque atual'],['min','Estoque abaixo do mínimo'],['epi','Estoque de EPIs'],['eq','Equipamentos'],['mov','Entradas e saídas']].map(([k,t])=>`<button class="bt s" onclick="rel('${k}')">${t}</button>`).join('')}
+<h3>Dados</h3><button class=bt onclick="show('Backup (copie e guarde)',JSON.stringify(S))">Backup dos dados</button><button class="bt s" onclick="restaurar()">Restaurar backup</button><button class="bt s" onclick="form('Nova unidade',[['n','Unidade','t',0,1]],{},v=>{const u=v.n.toUpperCase();if(S.uns.includes(u))return'Unidade já existe.';S.uns.push(u);save()})">Adicionar unidade de medida</button>
+<p class=mu>Os dados ficam salvos somente neste navegador deste aparelho. Não há sincronização entre celulares. Limpar os dados do navegador apaga tudo, então faça backup com frequência.</p>`}
+function restaurar(){form('Restaurar backup',[['j','Cole o texto do backup (isto substitui TODOS os dados atuais)','a',0,1]],{},v=>{let d;try{d=JSON.parse(v.j)}catch(e){return'Texto de backup inválido.'}if(!d.obras||!d.oc||!d.mat)return'Este texto não parece um backup deste app.';S=Object.assign({epis:[],eqp:[],eh:[],ecats:ECATS},d);save()})}
+// ---- render
+const NAV=[['painel','📊','Painel'],['oc','📄','OCs'],['est','📦','Estoque'],['cad','🏗️','Cadastros'],['mais','☰','Mais']];
+function render(){const v=R.id&&R.t=='oc'?vOCd():R.id&&R.t=='mat'?vMat():R.id&&R.t=='epi'?vEpiD():R.id&&R.t=='eq'?vEqD():({painel:vPainel,oc:vOC,est:vEst,cad:vCad,mais:vMais})[R.t]();$('#app').innerHTML=v;
+$('#ttl').textContent=(NAV.find(n=>n[0]==R.t)||[])[2]||'Gestão de Obras';$('#nv').innerHTML=NAV.map(([t,i,l])=>`<button class="${t==R.t?'on':''}" onclick="go('${t}')"><b>${i}</b>${l}</button>`).join('')}
+render();
+</script></body></html>
